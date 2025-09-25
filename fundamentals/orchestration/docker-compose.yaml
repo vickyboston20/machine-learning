@@ -331,5 +331,19 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
+  mailpit:
+    image: axllent/mailpit
+    container_name: "mailpit"
+    volumes:
+      - mailpit-data:/data
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI port
+    env_file:
+      - ./.env
+    restart: always
+
+
 volumes:
   postgres-db-volume:
+  mailpit-data:

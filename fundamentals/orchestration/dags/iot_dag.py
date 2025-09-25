@@ -1,7 +1,8 @@
 from airflow import DAG
-from airflow.operators.empty import EmptyOperator
+from airflow.operators.empty import EmptyOperator  # Fixed: DummyOperator -> EmptyOperator
 from airflow.operators.python import PythonOperator
-from datetime import datetime, timedelta
+from airflow.operators.email import EmailOperator
+from datetime import datetime, timedelta  # Fixed: replaced days_ago import
 import random
 import time
 
@@ -9,10 +10,9 @@ import time
 # Function to generate random IoT data
 def generate_iot_data(**kwargs):
     data = []
-    for _ in range(10):  # Reduced to 10 readings for testing
+    for _ in range(60):  # 60 readings (1 per second) over one minute
         data.append(random.choice([0, 1]))
-        time.sleep(0.1)  # Reduced sleep time for testing
-    print(f"Generated data: {data}")
+        time.sleep(1)  # simulate a 1-second interval
     return data
 
 
@@ -23,25 +23,22 @@ def aggregate_machine_data(**kwargs):
     count_0 = data.count(0)
     count_1 = data.count(1)
     aggregated_data = {'count_0': count_0, 'count_1': count_1}
-    print(f"Aggregated data: {aggregated_data}")
     return aggregated_data
 
 
-# Function to print results (instead of email)
-def print_results(**kwargs):
+# Email content generation
+def create_email_content(**kwargs):
     ti = kwargs['ti']
     aggregated_data = ti.xcom_pull(task_ids='aggregate_machine_data')
-    message = (f"Aggregated IoT Data:\n"
-               f"Count of 0: {aggregated_data['count_0']}\n"
-               f"Count of 1: {aggregated_data['count_1']}")
-    print(message)
-    return message
+    return (f"Aggregated IoT Data:\n"
+            f"Count of 0: {aggregated_data['count_0']}\n"
+            f"Count of 1: {aggregated_data['count_1']}")
 
 
 # Default arguments for the DAG
 default_args = {
     'owner': 'airflow',
-    'start_date': datetime(2024, 1, 1),
+    'start_date': datetime(2024, 1, 1),  # Fixed: days_ago(1) -> datetime(2024, 1, 1)
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
@@ -51,13 +48,11 @@ default_args = {
 with DAG(
     dag_id='iot_data_pipeline',
     default_args=default_args,
-    description='IoT Data Processing Pipeline',
-    schedule=None,
+    schedule=None,  # Fixed: schedule_interval -> schedule
     catchup=False,
-    tags=['iot', 'data-processing'],
 ) as dag:
 
-    start_task = EmptyOperator(task_id='start_task')
+    start_task = EmptyOperator(task_id='start_task')  # Fixed: DummyOperator -> EmptyOperator
 
     getting_iot_data = PythonOperator(
         task_id='getting_iot_data',
@@ -69,12 +64,22 @@ with DAG(
         python_callable=aggregate_machine_data,
     )
 
-    print_results_task = PythonOperator(
-        task_id='print_results',
-        python_callable=print_results,
+    # Generate email content as a separate task (Fixed: EmailOperator content issue)
+    generate_email_content = PythonOperator(
+        task_id='generate_email_content',
+        python_callable=create_email_content,
     )
 
-    end_task = EmptyOperator(task_id='end_task')
+    # Fixed: EmailOperator using templated content and mailpit SMTP
+    send_email = EmailOperator(
+        task_id='send_email',
+        to='technician@example.com',
+        subject='IoT Data Aggregation Results',
+        html_content="{{ ti.xcom_pull(task_ids='generate_email_content') }}",
+        conn_id='mailpit_smtp',  # Added: specify SMTP connection
+    )
 
-    # Define the task dependencies
-    start_task >> getting_iot_data >> aggregate_machine_data >> print_results_task >> end_task
+    end_task = EmptyOperator(task_id='end_task')  # Fixed: DummyOperator -> EmptyOperator
+
+    # Define the task dependencies (Fixed: added generate_email_content in the chain)
+    start_task >> getting_iot_data >> aggregate_machine_data >> generate_email_content >> send_email >> end_task
