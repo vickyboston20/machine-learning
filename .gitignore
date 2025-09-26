@@ -13,3 +13,7 @@ wheels/
 logs/
 config/
 plugins/
+
+# mlflow
+mlruns/
+mlartifacts/
