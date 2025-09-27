@@ -7,7 +7,7 @@ mlflow.set_tracking_uri("http://localhost:5000")  # Replace <your-server-ip> wit
 
 # Define the MLflow artifact URI
 # Note: Replace the artifact_uri with the actual path to the model artifact in your MLflow UI
-artifact_uri = "mlflow-artifacts:/818279823369072980/models/m-e8ba07fdec0c4114a85370d61bf39b69/artifacts/model.pkl"
+artifact_uri = "mlflow-artifacts:/699622548556470759/models/m-77b48b58675545f7b5fb25223db4f6d6/artifacts/model.pkl"
 
 # Specify the local path to save the downloaded file
 local_path = "model.pkl"

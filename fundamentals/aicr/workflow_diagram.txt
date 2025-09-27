@@ -1,0 +1,57 @@
+AUTOMATIC INSURANCE CLAIM REVIEW (AICR) - COMPLETE WORKFLOW
+================================================================
+
+1. DATA GENERATION (synthetic_health_claims.py)
+   ┌─────────────────────────────────────────────────────────────┐
+   │ Generate 1000 normal claims + 50 anomalous claims          │
+   │ Features: claim_amount, num_services, patient_age,         │
+   │          provider_id, days_since_last_claim                │
+   │ Output: synthetic_health_claims.csv                        │
+   └─────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+2. MODEL TRAINING (isolation_model.py)
+   ┌─────────────────────────────────────────────────────────────┐
+   │ Load CSV → Split 80/20 → Train Isolation Forest            │
+   │ Parameters: n_estimators=100, contamination=0.05           │
+   │ Log to MLflow → Save model.pkl                             │
+   └─────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+3. MODEL REGISTRATION (register_model.py)
+   ┌─────────────────────────────────────────────────────────────┐
+   │ Load model.pkl → Register with BentoML                     │
+   │ Model Name: health_insurance_anomaly_detector              │
+   └─────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+4. MODEL SERVING (service.py)
+   ┌─────────────────────────────────────────────────────────────┐
+   │ BentoML Service: HealthInsuranceAnomalyDetectionService    │
+   │ Endpoint: /predict                                          │
+   │ Input: DataFrame → Output: List of predictions (-1/+1)     │
+   └─────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+5. WEB INTERFACE (flaskapp.py)
+   ┌─────────────────────────────────────────────────────────────┐
+   │ Flask App (Port 5005)                                       │
+   │ Upload CSV → Send to BentoML → Display Results             │
+   │ Templates: index.html, result.html                         │
+   └─────────────────────────────────────────────────────────────┘
+
+PREDICTION FLOW:
+User uploads CSV → Flask processes → BentoML predicts → Results displayed
+
+ISOLATION FOREST ALGORITHM:
+- Builds 100 decision trees with random feature splits
+- Anomalies are isolated in fewer steps (shorter paths)
+- Returns +1 (normal) or -1 (anomaly) for each claim
+- 5% contamination rate (expects 5% anomalies)
+
+KEY FEATURES:
+- Unsupervised learning (no labeled data needed)
+- Real-time anomaly detection
+- Web-based interface for easy use
+- MLflow integration for model tracking
+- BentoML for scalable serving
